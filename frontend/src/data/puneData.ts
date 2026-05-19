@@ -24,7 +24,7 @@ export const puneZones = [
     riskLevel: "Critical",
   },
   {
-    name: "Magarpatta City",
+    name: "PCMC",
     temperature: 39.8,
     vegetationIndex: 0.22,
     buildingDensity: 78,
@@ -56,6 +56,14 @@ export const puneZones = [
     riskLevel: "High",
   },
   {
+    name: "Kharadi Business Park",
+    temperature: 41.1,
+    vegetationIndex: 0.15,
+    buildingDensity: 82,
+    score: 86,
+    riskLevel: "Critical",
+  },
+  {
     name: "NIBM Road",
     temperature: 37.8,
     vegetationIndex: 0.24,
@@ -72,7 +80,7 @@ export const puneZones = [
     riskLevel: "Moderate",
   },
   {
-    name: "SB Road",
+    name: "Chinchwad",
     temperature: 37.5,
     vegetationIndex: 0.3,
     buildingDensity: 62,
@@ -80,7 +88,7 @@ export const puneZones = [
     riskLevel: "Moderate",
   },
   {
-    name: "Law College Road",
+    name: "Bhosari",
     temperature: 36.9,
     vegetationIndex: 0.3,
     buildingDensity: 60,
@@ -125,6 +133,22 @@ export const puneZones = [
     vegetationIndex: 0.5,
     buildingDensity: 42,
     score: 28,
+    riskLevel: "Low",
+  },
+  {
+    name: "Akurdi",
+    temperature: 35.8,
+    vegetationIndex: 0.6,
+    buildingDensity: 42,
+    score: 26,
+    riskLevel: "Low",
+  },
+  {
+    name: "Ravet",
+    temperature: 42,
+    vegetationIndex: 0.7,
+    buildingDensity: 42,
+    score: 26,
     riskLevel: "Low",
   },
 ];

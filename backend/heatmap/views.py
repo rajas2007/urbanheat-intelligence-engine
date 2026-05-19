@@ -1,63 +1,111 @@
 import random
-from datetime import timedelta
-from django.utils.timezone import now
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
+from .services import fetch_open_meteo, fetch_building_density
 from .models import HeatData, HeatDataHistory
 from .serializers import HeatDataSerializer
 from .ml_model import get_heat_clusters
 
 
-# 🔹 GET LIVE DATA
+# 🔹 GET LIVE DATA (REAL API)
 @api_view(['GET'])
 def get_heat_data(request):
-    data = HeatData.objects.all().order_by('name')  # ✅ consistent order
-    serializer = HeatDataSerializer(data, many=True)
-    return Response(serializer.data)
-
-
-# 🔹 GET HISTORY (LAST N MINUTES)
-@api_view(['GET'])
-def get_history(request):
-    minutes = int(request.GET.get("minutes", 10))
-    since = now() - timedelta(minutes=minutes)
-
-    qs = HeatDataHistory.objects.filter(timestamp__gte=since).order_by('timestamp')
+    areas = [
+        ("Hinjewadi", 18.5912, 73.7389),
+        ("Kharadi", 18.5515, 73.9475),
+        ("Aundh", 18.5610, 73.8070),
+        ("Kothrud", 18.5074, 73.8077),
+        ("PCMC", 18.6298, 73.7997),
+    ]
 
     result = []
-    for d in qs:
+
+    for name, lat, lon in areas:
+        weather = fetch_open_meteo(lat, lon)
+        density = fetch_building_density(lat, lon, name)
+
+        temp = weather["temperature"][0] if weather["temperature"] else 30
+
         result.append({
-            "name": d.name,
-            "temperature": float(d.temperature),
-            "latitude": float(d.latitude),
-            "longitude": float(d.longitude),
-            "riskLevel": d.riskLevel,
-            "timestamp": d.timestamp.strftime("%H:%M:%S")
+            "name": name,
+            "latitude": lat,
+            "longitude": lon,
+            "temperature": float(temp),
+            "density": density,
         })
 
     return Response(result)
 
 
-# 🔹 GET CLUSTERS (ML OUTPUT)
+# 🔹 GET HISTORY → 24hr AVG PER AREA
 @api_view(['GET'])
-def get_clusters(request):
-    data = list(HeatData.objects.all().order_by('name'))  # ✅ SAME ORDER as serializer
-    serializer = HeatDataSerializer(data, many=True)
-    clusters = get_heat_clusters()
+def get_history(request):
+    areas = [
+        ("Hinjewadi", 18.5912, 73.7389),
+        ("Kharadi", 18.5515, 73.9475),
+        ("Aundh", 18.5610, 73.8070),
+        ("Kothrud", 18.5074, 73.8077),
+        ("PCMC", 18.6298, 73.7997),
+    ]
 
     result = []
 
-    for i, item in enumerate(serializer.data):
-        item['cluster'] = clusters[i] if i < len(clusters) else 0
+    for name, lat, lon in areas:
+        data = fetch_open_meteo(lat, lon)
+        temps = data["temperature"]
+
+        avg_temp = sum(temps) / len(temps) if temps else 0
+
+        result.append({
+            "name": name,
+            "temperature": round(avg_temp, 2)
+        })
+
+    return Response(result)
+
+
+# 🔹 GET CLUSTERS (REAL ML)
+@api_view(['GET'])
+def get_clusters(request):
+    areas = [
+        ("Hinjewadi", 18.5912, 73.7389),
+        ("Kharadi", 18.5515, 73.9475),
+        ("Aundh", 18.5610, 73.8070),
+        ("Kothrud", 18.5074, 73.8077),
+        ("PCMC", 18.6298, 73.7997),
+    ]
+
+    data_list = []
+
+    for name, lat, lon in areas:
+        weather = fetch_open_meteo(lat, lon)
+        density = fetch_building_density(lat, lon, name)
+
+        temp = weather["temperature"][0] if weather["temperature"] else 30
+
+        data_list.append({
+            "name": name,
+            "latitude": lat,
+            "longitude": lon,
+            "temperature": float(temp),
+            "density": density
+        })
+
+    clusters = get_heat_clusters(data_list)
+
+    result = []
+
+    for i, item in enumerate(data_list):
+        item["cluster"] = clusters[i] if i < len(clusters) else 0
         result.append(item)
 
     return Response(result)
 
 
-# 🔹 ADD DATA (MANUAL ENTRY)
+# 🔹 ADD DATA (UNCHANGED)
 @api_view(['POST'])
 def add_heat_data(request):
     serializer = HeatDataSerializer(data=request.data)
@@ -65,7 +113,6 @@ def add_heat_data(request):
     if serializer.is_valid():
         obj = serializer.save()
 
-        # 🔥 ALSO SAVE HISTORY
         HeatDataHistory.objects.create(
             name=obj.name,
             latitude=obj.latitude,
@@ -79,7 +126,7 @@ def add_heat_data(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# 🔹 SIMULATE LIVE DATA
+# 🔹 SIMULATE (UNCHANGED)
 @api_view(['POST'])
 def simulate_data(request):
     areas = [
@@ -87,7 +134,7 @@ def simulate_data(request):
         ("Kharadi", 18.5515, 73.9475),
         ("Aundh", 18.5610, 73.8070),
         ("Kothrud", 18.5074, 73.8077),
-        ("PCMC", 18.6298, 73.7997),  # ✅ IMPORTANT
+        ("PCMC", 18.6298, 73.7997),
     ]
 
     updated_data = []
@@ -95,7 +142,6 @@ def simulate_data(request):
     for name, lat, lon in areas:
         temp = random.randint(30, 45)
 
-        # 🔥 risk logic
         if temp >= 40:
             risk = "Critical"
         elif temp >= 37:
@@ -105,7 +151,6 @@ def simulate_data(request):
         else:
             risk = "Low"
 
-        # ✅ UPDATE OR CREATE
         obj, created = HeatData.objects.update_or_create(
             name=name,
             defaults={
@@ -116,7 +161,6 @@ def simulate_data(request):
             }
         )
 
-        # ✅ SAVE HISTORY
         HeatDataHistory.objects.create(
             name=name,
             latitude=lat,

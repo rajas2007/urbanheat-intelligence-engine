@@ -1,67 +1,87 @@
 import { useEffect, useState } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
-type Zone = {
-  name: string;
+type DataPoint = {
+  timestamp: string;
   temperature: number;
-  latitude: number;
-  longitude: number;
-  riskLevel: string;
-  cluster?: number;
+  name: string;
 };
 
 const HeatGraph = () => {
-  const [data, setData] = useState<Zone[]>([]);
+  const [data, setData] = useState<DataPoint[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/clusters/");
+        const res = await fetch("http://127.0.0.1:8000/api/history/");
         const result = await res.json();
-        setData(result);
+
+        // 🔥 Format time (clean for X-axis)
+        const formatted = result.map((d: DataPoint) => ({
+          ...d,
+          time: new Date(d.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }));
+
+        setData(formatted);
       } catch (err) {
-        console.error("Graph fetch error:", err);
+        console.error("Chart error:", err);
       }
     };
 
     fetchData();
 
-    const interval = setInterval(fetchData, 2000); // refresh graph
+    const interval = setInterval(fetchData, 60000); // refresh every 1 min
     return () => clearInterval(interval);
   }, []);
 
   return (
-   <div style={{ padding: "10px", background: "#0f172a", color: "white", width: "350px" }}>
-      <h3>📊 Temperature Overview</h3>
+    <div className="bg-[#0f172a] p-4 rounded-xl text-white shadow-lg">
+      <h3 className="mb-3 text-sm text-gray-400">
+        🌡 24-Hour Temperature Trend
+      </h3>
 
-      {data.length === 0 && <p>No data available</p>}
+      <ResponsiveContainer width="100%" height={250}>
+        <LineChart data={data}>
+          <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" />
 
-      {data.map((zone, index) => (
-        <div key={index} style={{ marginBottom: "10px" }}>
-          <strong>{zone.name}</strong>
+          <XAxis
+            dataKey="time"
+            stroke="#9ca3af"
+            tick={{ fontSize: 10 }}
+          />
 
-          <div
-            style={{
-              height: "10px",
-              width: `${zone.temperature * 5}px`, // instead of *2
-              maxWidth: "100%",
-              background:
-                zone.temperature > 40
-                  ? "red"
-                  : zone.temperature > 37
-                  ? "orange"
-                  : zone.temperature > 34
-                  ? "yellow"
-                  : "green",
-              borderRadius: "5px",
-              marginTop: "5px",
+          <YAxis
+            stroke="#9ca3af"
+            domain={["dataMin - 2", "dataMax + 2"]}
+          />
+
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#111827",
+              border: "none",
             }}
           />
 
-          <small>
-            {zone.temperature}°C | {zone.riskLevel}
-          </small>
-        </div>
-      ))}
+          <Line
+            type="monotone"
+            dataKey="temperature"
+            stroke="#ef4444"
+            strokeWidth={2}
+            dot={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 };

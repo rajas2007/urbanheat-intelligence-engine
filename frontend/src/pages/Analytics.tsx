@@ -24,7 +24,7 @@ const Analytics = () => {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 1000); // 🔥 1 sec refresh
+    const interval = setInterval(fetchData, 60000); // 🔥 1 min refresh
     return () => clearInterval(interval);
   }, []);
 
