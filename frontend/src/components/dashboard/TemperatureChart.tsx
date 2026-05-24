@@ -17,14 +17,22 @@ export const TemperatureChart = () => {
       try {
         const res = await fetch("http://127.0.0.1:8000/api/history/");
         const result = await res.json();
-
         setData(result);
       } catch (err) {
         console.error("Chart error:", err);
       }
     };
 
+    // ✅ initial fetch
     fetchData();
+
+    // ✅ fetch every 5 seconds
+    const interval = setInterval(() => {
+      fetchData();
+    }, 5000);
+
+    // ✅ cleanup (VERY IMPORTANT)
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -38,7 +46,7 @@ export const TemperatureChart = () => {
       </p>
 
       <div style={{ width: "100%", height: 300 }}>
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
             <CartesianGrid stroke="#1f2937" strokeDasharray="4 4" />
 

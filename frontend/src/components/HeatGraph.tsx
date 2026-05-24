@@ -51,6 +51,7 @@ const HeatGraph = () => {
         🌡 24-Hour Temperature Trend
       </h3>
 
+       <div className="w-full h-[300px]">
       <ResponsiveContainer width="100%" height={250}>
         <LineChart data={data}>
           <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" />
@@ -82,6 +83,7 @@ const HeatGraph = () => {
           />
         </LineChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 };

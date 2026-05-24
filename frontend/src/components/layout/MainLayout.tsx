@@ -13,11 +13,11 @@ export const MainLayout = ({ children }: Props) => {
   return (
     <div className="flex min-h-screen w-full bg-[#0b0f19] text-white">
       
-      {/* Sidebar */}
+      {/* 🔥 Sidebar (GLOBAL) */}
       <Sidebar isOpen={isOpen} toggle={toggleSidebar} />
 
-      {/* Main Content */}
-      <div className="flex-1 transition-all duration-300">
+      {/* 📊 Main Content */}
+      <div className="flex-1 transition-all duration-300 overflow-hidden">
         {children}
       </div>
 
