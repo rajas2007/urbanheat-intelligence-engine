@@ -7,33 +7,14 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { useEffect, useState } from "react";
+import { useHeatData } from "../../hooks/useHeatData";
 
 export const TemperatureChart = () => {
-  const [data, setData] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/history/");
-        const result = await res.json();
-        setData(result);
-      } catch (err) {
-        console.error("Chart error:", err);
-      }
-    };
-
-    // ✅ initial fetch
-    fetchData();
-
-    // ✅ fetch every 5 seconds
-    const interval = setInterval(() => {
-      fetchData();
-    }, 5000);
-
-    // ✅ cleanup (VERY IMPORTANT)
-    return () => clearInterval(interval);
-  }, []);
+  const { zones } = useHeatData();
+  const data = zones.map((zone) => ({
+    name: zone.name,
+    temperature: zone.temperature,
+  }));
 
   return (
     <>

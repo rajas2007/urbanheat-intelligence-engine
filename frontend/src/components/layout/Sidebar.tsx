@@ -1,20 +1,33 @@
 import { Link, useLocation } from "react-router-dom";
 import {
+  BarChart3,
   Flame,
   LayoutDashboard,
   Map,
-  BarChart3,
-  Settings,
   Menu,
+  Settings,
 } from "lucide-react";
+import { SimulationModeButton } from "./SimulationModeButton";
 
 type Props = {
   isOpen: boolean;
   toggle: () => void;
+  mode: "REAL" | "SIMULATION";
+  busy: boolean;
+  onRunSimulation: () => void;
+  onStopSimulation: () => void;
 };
 
-export const Sidebar = ({ isOpen, toggle }: Props) => {
+export const Sidebar = ({
+  isOpen,
+  toggle,
+  mode,
+  busy,
+  onRunSimulation,
+  onStopSimulation,
+}: Props) => {
   const location = useLocation();
+  const simulationActive = mode === "SIMULATION";
 
   return (
     <div
@@ -24,7 +37,6 @@ export const Sidebar = ({ isOpen, toggle }: Props) => {
         p-4 transition-all duration-300
       `}
     >
-      {/* Top */}
       <div className="flex items-center justify-between mb-8">
         {isOpen && (
           <div className="flex items-center gap-2">
@@ -35,15 +47,12 @@ export const Sidebar = ({ isOpen, toggle }: Props) => {
           </div>
         )}
 
-        {/* Toggle Button */}
         <button onClick={toggle}>
           <Menu className="text-gray-400 hover:text-white" />
         </button>
       </div>
 
-      {/* Menu */}
       <div className="space-y-3 text-sm">
-
         <SidebarItem
           to="/"
           icon={LayoutDashboard}
@@ -75,7 +84,40 @@ export const Sidebar = ({ isOpen, toggle }: Props) => {
           isOpen={isOpen}
           active={location.pathname === "/settings"}
         />
+      </div>
 
+      <div className="mt-8 border-t border-[#1f2937] pt-4">
+        <div
+          className={`mb-3 inline-flex max-w-full items-center gap-2 rounded-md border px-2 py-1 ${
+            simulationActive
+              ? "border-amber-500/20 bg-amber-500/10 text-amber-200"
+              : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+          }`}
+        >
+          <span className="flex h-2 w-2 items-center justify-center">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                simulationActive
+                  ? "bg-amber-400"
+                  : "bg-emerald-400"
+              }`}
+            />
+          </span>
+          {isOpen && (
+            <span className="truncate text-[11px] font-medium">
+              {simulationActive ? "Simulation Active" : "Live Data"}
+            </span>
+          )}
+        </div>
+
+        <SimulationModeButton
+          simulationActive={simulationActive}
+          busy={busy}
+          onRun={onRunSimulation}
+          onStop={onStopSimulation}
+          fullWidth={isOpen}
+          iconOnly={!isOpen}
+        />
       </div>
     </div>
   );

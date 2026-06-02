@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useHeatData } from "../../hooks/useHeatData";
 
 type Zone = {
   name: string;
@@ -21,33 +22,16 @@ const getClusterLabel = (cluster: number) => {
 };
 
 export const HeatGrid = () => {
-  const [zones, setZones] = useState<Zone[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { zones, loading } = useHeatData();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/clusters/");
-        const data = await res.json();
-
-        const formatted: Zone[] = (data || []).map((z: any) => ({
-          name: z.name || "Unknown",
-          temperature: Number(z.temperature) || 0,
-          cluster: Number(z.cluster) || 0,
-        }));
-
-        setZones(formatted);
-      } catch (err) {
-        console.error("HeatGrid error:", err);
-      } finally {
-        setLoading(false); // ✅ always stop loading
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const formatted = useMemo(
+    () => zones.map((z) => ({
+      name: z.name || "Unknown",
+      temperature: Number(z.temperature) || 0,
+      cluster: Number(z.cluster) || 0,
+    })),
+    [zones]
+  );
 
   return (
     <div>

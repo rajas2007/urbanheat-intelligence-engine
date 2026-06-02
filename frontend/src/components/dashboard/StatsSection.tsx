@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Thermometer, AlertTriangle, Leaf } from "lucide-react";
 import { StatCard } from "./StatCard";
+import { useHeatData } from "../../hooks/useHeatData";
 
 const safeDivide = (num: number, den: number) =>
   den === 0 ? 0 : num / den;
@@ -28,45 +29,36 @@ const EMPTY: Stats = {
 };
 
 export const StatsSection = () => {
+  const { zones } = useHeatData();
   const [current, setCurrent] = useState<Stats>(EMPTY);
   const [prev, setPrev] = useState<Stats>(EMPTY);
   const lastRef = useRef<Stats | null>(null);
 
+  const next = useMemo(() => {
+    if (!zones.length) return EMPTY;
+
+    const jittered = zones.map((z) => ({
+      ...z,
+      temperature: (z.temperature || 0) + (Math.random() - 0.5) * 2,
+      vegetation: Math.min(
+        1,
+        Math.max(0, (z.vegetation || 0) + (Math.random() - 0.5) * 0.05)
+      ),
+    }));
+
+    return calcStats(jittered);
+  }, [zones]);
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/clusters/");
-        const data = await res.json();
-        if (!Array.isArray(data) || !data.length) return;
+    if (!zones.length) return;
 
-        // Jitter raw data for demo
-        const jittered = data.map((z) => ({
-          ...z,
-          temperature: (z.temperature || 0) + (Math.random() - 0.5) * 2,
-          vegetation: Math.min(1, Math.max(0,
-            (z.vegetation || 0) + (Math.random() - 0.5) * 0.05
-          )),
-        }));
+    if (lastRef.current !== null) {
+      setPrev(lastRef.current);
+    }
 
-        const next = calcStats(jittered);
-
-        // prev = what we had LAST cycle
-        if (lastRef.current !== null) {
-          setPrev(lastRef.current);
-        }
-
-        lastRef.current = next;
-        setCurrent(next);         // ← render from stored stats, not zones
-
-      } catch (err) {
-        console.error("Stats fetch error:", err);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 2000);
-    return () => clearInterval(interval);
-  }, []);
+    lastRef.current = next;
+    setCurrent(next);
+  }, [next, zones.length]);
 
   if (current.peak === 0) return <div className="text-gray-400">Loading...</div>;
 

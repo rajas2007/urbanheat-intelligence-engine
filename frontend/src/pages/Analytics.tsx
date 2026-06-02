@@ -4,6 +4,7 @@ import {
   X, Send, Minimize2, Maximize2, Wind,
   ShieldAlert, ShieldCheck, ShieldQuestion,
 } from "lucide-react";
+import { useHeatData } from "../hooks/useHeatData";
 
 type Zone = {
   name: string;
@@ -269,29 +270,18 @@ const Chatbot = ({ zones }: { zones: Zone[] }) => {
 
 // ── Main Page ─────────────────────────────────────────────────
 const Analytics = () => {
-  const [zones, setZones] = useState<Zone[]>([]);
+  const { zones, lastFetchedAt } = useHeatData();
   const [lastUpdated, setLastUpdated] = useState("");
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res  = await fetch("http://127.0.0.1:8000/api/clusters/");
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setZones(data);
-          setLastUpdated(new Date().toLocaleTimeString());
-        }
-      } catch (err) { console.error(err); }
-    };
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!zones.length) return;
+    setLastUpdated(lastFetchedAt || new Date().toLocaleTimeString());
+  }, [zones, lastFetchedAt]);
 
   const critical = zones.filter((z) => z.cluster === 2);
   const moderate = zones.filter((z) => z.cluster === 1);
-  const safe     = zones.filter((z) => z.cluster === 0);
-  const avgTemp  = zones.length
+  const safe = zones.filter((z) => z.cluster === 0);
+  const avgTemp = zones.length
     ? zones.reduce((s, z) => s + z.temperature, 0) / zones.length
     : 0;
 

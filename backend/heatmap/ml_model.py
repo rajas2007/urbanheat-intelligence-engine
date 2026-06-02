@@ -1,50 +1,45 @@
-import numpy as np
 import random
+
+import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
 
-def get_heat_clusters(data_list):
-
+def get_heat_clusters(data_list, use_randomness=True):
     if len(data_list) == 0:
         return []
 
-    # 🔥 INCLUDE ALL FEATURES + RANDOM WEIGHT SHIFT
     features = np.array([
         [
-            float(d["temperature"]) * random.uniform(0.85, 1.15),
-            float(d["density"]) * random.uniform(0.85, 1.15),
-            float(d["humidity"]) * random.uniform(0.85, 1.15),
-            float(d["wind"]) * random.uniform(0.85, 1.15),
-            float(d["vegetation"]) * random.uniform(0.85, 1.15),
+            float(d["temperature"]) * (random.uniform(0.85, 1.15) if use_randomness else 1),
+            float(d["density"]) * (random.uniform(0.85, 1.15) if use_randomness else 1),
+            float(d["humidity"]) * (random.uniform(0.85, 1.15) if use_randomness else 1),
+            float(d["wind"]) * (random.uniform(0.85, 1.15) if use_randomness else 1),
+            float(d["vegetation"]) * (random.uniform(0.85, 1.15) if use_randomness else 1),
         ]
         for d in data_list
     ])
 
-    # ✅ Scale
     scaler = StandardScaler()
     scaled = scaler.fit_transform(features)
 
-    # 🔥 Weight importance
-    scaled[:, 0] *= 3.0   # temperature (most important)
-    scaled[:, 1] *= 2.0   # density
-    scaled[:, 2] *= 1.5   # humidity
-    scaled[:, 3] *= 1.2   # wind
-    scaled[:, 4] *= 1.0   # vegetation
+    scaled[:, 0] *= 3.0
+    scaled[:, 1] *= 2.0
+    scaled[:, 2] *= 1.5
+    scaled[:, 3] *= 1.2
+    scaled[:, 4] *= 1.0
 
-    noise = np.random.normal(0, 0.3, scaled.shape)
-    scaled = scaled + noise
+    if use_randomness:
+        scaled = scaled + np.random.normal(0, 0.3, scaled.shape)
 
     if len(scaled) < 3:
         return [0] * len(scaled)
 
     kmeans = KMeans(
-    n_clusters=3,
-    n_init=1,           # 🔥 reduce stability
-    random_state=None   # 🔥 remove fixed pattern
-)
+        n_clusters=3,
+        n_init=1 if use_randomness else 10,
+        random_state=None if use_randomness else 42,
+    )
     kmeans.fit(scaled)
-    
 
     return kmeans.labels_.astype(int).tolist()
-

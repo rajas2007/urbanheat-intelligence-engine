@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export type AppSettings = {
   tempThreshold: number;
@@ -11,11 +11,12 @@ export type AppSettings = {
   emailAlerts: boolean;
   autoRefresh: boolean;
   soundAlerts: boolean;
+  historicalYearRange: number;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
   tempThreshold: 35,
-  updateInterval: 2,
+  updateInterval: 5,
   alertCooldown: 30,
   dataRetention: "90",
   tempUnit: "celsius",
@@ -24,6 +25,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   emailAlerts: false,
   autoRefresh: true,
   soundAlerts: false,
+  historicalYearRange: 10,
 };
 
 const STORAGE_KEY = "utte_settings";

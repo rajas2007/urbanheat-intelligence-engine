@@ -8,10 +8,11 @@ import {
 import { StatCard } from "../components/dashboard/StatCard";
 import { HeatGrid } from "../components/dashboard/HeatGrid";
 import { TemperatureChart } from "../components/dashboard/TemperatureChart";
-import { RealTimeTrendChart } from "../components/dashboard/RealTimeTrendChart";
+import { HistoricalClimateChart } from "../components/dashboard/HistoricalClimateChart";
 import { ZoneTable } from "../components/dashboard/ZoneTable";
 import { ClusterChart } from "../components/dashboard/ClusterChart";
 import { loadSettings } from "../hooks/useSettings";
+import { useHeatData } from "../hooks/useHeatData";
 
 type Stats = { peak: number; avg: number; critical: number; vegetation: number; };
 const EMPTY: Stats = { peak: 0, avg: 0, critical: 0, vegetation: 0 };
@@ -24,52 +25,27 @@ const calcStats = (data: any[]): Stats => ({
 });
 
 const Index = () => {
+  const { zones: sharedZones } = useHeatData();
   const [zones, setZones] = useState<any[]>([]);
   const [current, setCurrent] = useState<Stats>(EMPTY);
   const [prev, setPrev] = useState<Stats>(EMPTY);
   const lastRef = useRef<Stats | null>(null);
 
   useEffect(() => {
-    const { updateInterval, autoRefresh, tempThreshold } = loadSettings();
+    if (!sharedZones.length) return;
 
-    const fetchData = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/clusters/");
-        const data = await res.json();
-        if (!Array.isArray(data) || !data.length) return;
+    const settings = loadSettings();
+    const withAlerts = sharedZones.map((z) => ({
+      ...z,
+      aboveThreshold: z.temperature > settings.tempThreshold,
+    }));
 
-        const jittered = data.map((z) => ({
-          ...z,
-          temperature: (z.temperature || 0) + (Math.random() - 0.5) * 2,
-          vegetation: Math.min(
-            1,
-            Math.max(0, (z.vegetation || 0) + (Math.random() - 0.5) * 0.05)
-          ),
-        }));
-
-        const withAlerts = jittered.map((z) => ({
-          ...z,
-          aboveThreshold: z.temperature > tempThreshold,
-        }));
-
-        const next = calcStats(withAlerts);
-
-        if (lastRef.current !== null) setPrev(lastRef.current);
-        lastRef.current = next;
-        setCurrent(next);
-        setZones(withAlerts);
-
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-      }
-    };
-
-    fetchData();
-
-    if (!autoRefresh) return;
-    const interval = setInterval(fetchData, updateInterval * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    const next = calcStats(withAlerts);
+    if (lastRef.current !== null) setPrev(lastRef.current);
+    lastRef.current = next;
+    setCurrent(next);
+    setZones(withAlerts);
+  }, [sharedZones]);
 
   const hottestZone = zones.length
     ? zones.reduce((max, z) => (z.temperature || 0) > (max.temperature || 0) ? z : max)
@@ -159,7 +135,7 @@ const Index = () => {
             <TemperatureChart />
           </div>
           <div className="bg-[#0f172a] border border-[#1f2937] rounded-xl p-5 shadow-lg">
-            <RealTimeTrendChart />
+            <HistoricalClimateChart />
           </div>
         </div>
 

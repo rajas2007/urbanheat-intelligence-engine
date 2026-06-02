@@ -7,7 +7,8 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useHeatData } from "../../hooks/useHeatData";
 
 type Point = {
   name: string;
@@ -24,34 +25,17 @@ const getColor = (cluster: number) => {
 };
 
 export const ClusterChart = () => {
-  const [data, setData] = useState<Point[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { zones, loading } = useHeatData();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/clusters/");
-        const result = await res.json();
-
-        const formatted: Point[] = (result || []).map((z: any) => ({
-          name: z.name,
-          temperature: Number(z.temperature) || 0,
-          density: Number(z.density) || 0,
-          cluster: Number(z.cluster) || 0,
-        }));
-
-        setData(formatted);
-        setLoading(false);
-      } catch (err) {
-        console.error("Cluster chart error:", err);
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const data = useMemo(
+    () => zones.map((z) => ({
+      name: z.name,
+      temperature: Number(z.temperature) || 0,
+      density: Number(z.density) || 0,
+      cluster: Number(z.cluster) || 0,
+    })),
+    [zones]
+  );
 
   return (
     <>
@@ -95,7 +79,7 @@ export const ClusterChart = () => {
 
               <Tooltip
                 formatter={(value: any, name: any) => [value, name]}
-                labelFormatter={(label: any) => `Area`}
+                labelFormatter={() => `Area`}
                 contentStyle={{
                   backgroundColor: "#020617",
                   border: "1px solid #1f2937",

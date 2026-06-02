@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -8,42 +8,14 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-
-type DataPoint = {
-  timestamp: string;
-  temperature: number;
-  name: string;
-};
+import { useHeatData } from "../hooks/useHeatData";
 
 const HeatGraph = () => {
-  const [data, setData] = useState<DataPoint[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/history/");
-        const result = await res.json();
-
-        // 🔥 Format time (clean for X-axis)
-        const formatted = result.map((d: DataPoint) => ({
-          ...d,
-          time: new Date(d.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        }));
-
-        setData(formatted);
-      } catch (err) {
-        console.error("Chart error:", err);
-      }
-    };
-
-    fetchData();
-
-    const interval = setInterval(fetchData, 60000); // refresh every 1 min
-    return () => clearInterval(interval);
-  }, []);
+  const { historyPoints } = useHeatData();
+  const data = useMemo(
+    () => historyPoints.map((point) => ({ time: point.time, temp: point.temp })),
+    [historyPoints]
+  );
 
   return (
     <div className="bg-[#0f172a] p-4 rounded-xl text-white shadow-lg">
@@ -76,7 +48,7 @@ const HeatGraph = () => {
 
           <Line
             type="monotone"
-            dataKey="temperature"
+            dataKey="temp"
             stroke="#ef4444"
             strokeWidth={2}
             dot={false}

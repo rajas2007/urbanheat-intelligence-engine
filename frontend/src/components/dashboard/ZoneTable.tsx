@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useHeatData } from "../../hooks/useHeatData";
 
 type Zone = {
   name: string;
@@ -14,36 +14,12 @@ const getRiskLevel = (cluster: number) => {
 };
 
 export const ZoneTable = () => {
-  const [zones, setZones] = useState<Zone[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/api/clusters/");
-        const data = await res.json();
-
-        // ✅ ensure correct format
-        const formatted: Zone[] = data.map((z: any) => ({
-          name: z.name,
-          temperature: Number(z.temperature),
-          cluster: Number(z.cluster),
-        }));
-
-        setZones(formatted);
-        setLoading(false);
-      } catch (err) {
-        console.error("Zone table error:", err);
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-
-    // 🔥 make it dynamic
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const { zones, loading } = useHeatData();
+  const formatted = zones.map((z) => ({
+    name: z.name,
+    temperature: Number(z.temperature),
+    cluster: Number(z.cluster),
+  }));
 
   return (
     <>

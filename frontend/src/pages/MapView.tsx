@@ -6,6 +6,7 @@ import {
   Popup,
   useMap,
 } from "react-leaflet";
+import { useHeatData } from "../hooks/useHeatData";
 import "leaflet.heat";
 import L from "leaflet";
 
@@ -123,27 +124,16 @@ const HeatLayer = ({ zones }: { zones: Zone[] }) => {
 
 // ── Main Component ────────────────────────────────────────────
 const MapView = () => {
-  const [zones,       setZones      ] = useState<Zone[]>([]);
-  const [showHeat,    setShowHeat   ] = useState(true);
-  const [filter,      setFilter     ] = useState<"all" | 0 | 1 | 2>("all");
-  const [selected,    setSelected   ] = useState<Zone | null>(null);
+  const { zones, lastFetchedAt } = useHeatData();
+  const [showHeat, setShowHeat] = useState(true);
+  const [filter, setFilter] = useState<"all" | 0 | 1 | 2>("all");
+  const [selected, setSelected] = useState<Zone | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>("");
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res  = await fetch("http://127.0.0.1:8000/api/clusters/");
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setZones(data);
-          setLastUpdated(new Date().toLocaleTimeString());
-        }
-      } catch (err) { console.error(err); }
-    };
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!zones.length) return;
+    setLastUpdated(lastFetchedAt || new Date().toLocaleTimeString());
+  }, [zones, lastFetchedAt]);
 
   const filtered = filter === "all"
     ? zones
