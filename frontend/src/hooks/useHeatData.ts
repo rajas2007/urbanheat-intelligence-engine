@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { loadSettings } from "./useSettings";
+import { API_BASE_URL } from "../config";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = `${API_BASE_URL}/api`;
 const DATA_ENDPOINT = `${API_BASE}/data/`;
 const MAX_HISTORY_POINTS = 12;
 

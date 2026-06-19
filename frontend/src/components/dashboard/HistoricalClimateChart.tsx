@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import { useEffect, useState } from "react";
 import { loadSettings } from "../../hooks/useSettings";
+import { API_BASE_URL } from "../../config";
 
 type HistoricalDataPoint = {
   year: number;
@@ -126,7 +127,7 @@ export const HistoricalClimateChart = () => {
         setError(null);
 
         const response = await fetch(
-          `http://127.0.0.1:8000/api/historical-climate/?year_range=${yearRange}&month=${currentMonth}`
+          `${API_BASE_URL}/api/historical-climate/?year_range=${yearRange}&month=${currentMonth}`
         );
 
         if (!response.ok) {

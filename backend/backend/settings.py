@@ -4,10 +4,20 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "dev-only-secret"
+)
 
-ALLOWED_HOSTS = ['*']  # ✅ allow local frontend
+DEBUG = os.getenv(
+    "DEBUG",
+    "False"
+) == "True"
+
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1,.onrender.com"
+).split(",")
 
 
 # ========================
@@ -35,6 +45,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # ✅ MUST BE FIRST
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -83,12 +94,22 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # DATABASE (MySQL)
 # ========================
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+import dj_database_url
+
+if os.getenv("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            conn_max_age=600,
+            ssl_require=True
+        )
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # ========================
 # PASSWORD VALIDATION
@@ -118,7 +139,11 @@ USE_TZ = True
 # STATIC FILES
 # ========================
 
-STATIC_URL = 'static/'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = (
+    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+)
 
 
 # ========================
@@ -132,7 +157,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 🔥 CORS FIX (IMPORTANT)
 # ========================
 
-CORS_ALLOW_ALL_ORIGINS = True
+cors_origins = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    ""
+)
+
+if cors_origins:
+    CORS_ALLOWED_ORIGINS = [
+        x.strip()
+        for x in cors_origins.split(",")
+        if x.strip()
+    ]
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 CACHES = {
     "default": {

@@ -5,6 +5,7 @@ import { useSystemMode } from "../hooks/useSystemMode";
 import { useHeatData } from "../hooks/useHeatData";
 import { useSystemSettings } from "../hooks/useSystemSettings";
 import { useSettings } from "../hooks/useSettings";
+import { API_BASE_URL } from "../config";
 
 type AppSettings = import("../hooks/useSettings").AppSettings;
 
@@ -169,7 +170,7 @@ const Settings = () => {
   useEffect(() => {
     const fetchAreas = async () => {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/settings/areas/");
+        const res = await fetch(`${API_BASE_URL}/api/settings/areas/`);
         const data = await res.json();
         setRegionsData(data);
         
@@ -193,7 +194,7 @@ const Settings = () => {
     try {
       setSaveState("idle");
       // Save areas
-      const res = await fetch("http://127.0.0.1:8000/api/settings/areas/", {
+      const res = await fetch(`${API_BASE_URL}/api/settings/areas/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selected_names: tempSelected }),

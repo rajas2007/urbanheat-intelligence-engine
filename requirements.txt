@@ -5,6 +5,10 @@ anthropic
 requests
 google-genai
 python-dotenv
+gunicorn
+whitenoise
+psycopg2-binary
+dj-database-url
 
 # ML requirements for K-Means clustering
 numpy

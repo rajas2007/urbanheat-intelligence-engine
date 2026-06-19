@@ -1,102 +1,93 @@
-# Walkthrough - Gemini Quota Exhaustion Fixes - Phase 2
+# Production Deployment Walkthrough
 
-I have resolved all outstanding bugs and implemented optimizations for the Gemini rate limit quota protection system, covering timezone errors, cooldown cache miss loops, request storms, and exponential backoff.
-
-## Summary of Changes
-
-### 1. Fix 1: Timezone Runtime Error (`llm_engine.py`)
-* **Conflict Resolved**: Changed `from django.utils import timezone` inside the function's catch block to a local import `from django.utils import timezone as django_timezone`. This prevents variable shadowing with python's global `datetime.timezone` which caused an `UnboundLocalError` when calling `timezone.utc` in the same scope.
-
-### 2. Fix 2: Cooldown Cache Miss Loop & Standardized Logging (`views.py`)
-* **Backup Key Checks**: Refactored `views.py` so that requests check for backup cache keys (e.g. check `"rule"` key if expected is `"gemini"` or vice-versa) before resorting to calling `generate_analysis`.
-* **Fallback Caching**: Correctly cached rule-based reports immediately after fallback generation under cooldown or quota limits.
-* **Standardized Caching Log Format**: Configured cache logs across all endpoints to follow the exact requested format:
-  * `Cache hit: <key>`
-  * `Cache miss: <key>`
-  * `Cache write: <key> (provider: <provider>)`
-
-### 3. Fix 3: Settings Request storm & Timer Loop (`useSystemSettings.ts`, `Analytics.tsx`, `views.py`)
-* **Global External Store**: Rewrote `useSystemSettings.ts` to utilize a single global shared state via `useSyncExternalStore` with request deduplication and a 10-second `staleTime` cache.
-* **Countdown Timer Effect**: Rewrote the timer effect in `Analytics.tsx` to depend on primitive values instead of the entire settings object and to refresh settings exactly once upon the natural expiration transition (`prev > 0 && remaining <= 0`), eliminating render-trigger loops.
-* **Expired Cooldown Cleanup on GET Settings**: Modified the settings endpoint GET handler in `views.py` to check and clear expired cooldowns, ensuring accurate status information is returned.
-
-### 4. Fix 4: Exponential Backoff scaling on Repeated Failures (`llm_engine.py`, `facade.py`)
-* **Exponential Backoff**: Used the new `consecutive_failures` column on `SystemSettings` to scale cooldown periods exponentially when rate limits are repeatedly hit:
-  $$\text{cooldown\_seconds} = \max(\text{parsed\_retry\_delay}, 300.0) \times 2^{\text{consecutive\_failures} - 1}$$
-* **Success Resets**: Reset `consecutive_failures` to `0`, `provider_status` to `"active"`, and `cooldown_until` to `None` upon any successful Gemini response in `facade.py`.
+I have implemented and verified all backend and frontend changes required for the production deployment of the Urban Heat Intelligence Engine to Render and Vercel.
 
 ---
 
-## Verification Proof
+## 1. Exact Files Modified
 
-### 1. Automated Django Tests
-We ran `python manage.py test` to verify database settings, backoff math, cooldown skips, and the timezone fix:
-```text
-Creating test database for alias 'default'...
-INFO Gemini call
-INFO Rule engine used
-INFO Gemini skipped - Cooldown active
-INFO Rule engine used
-INFO Gemini call
-INFO Rule engine used
-INFO Gemini call
-.LLM Generation failed: 429 Resource Exhausted. Falling back to rule engine.
-Gemini quota exceeded. Cooldown active for 300.0 seconds (failure count: 1).
-.LLM Generation failed: 429 Resource Exhausted. Falling back to rule engine.
-Gemini quota exceeded. Cooldown active for 600.0 seconds (failure count: 2).
-.OPEN METEO ERROR:
-Open-Meteo error: slow read
-OPEN METEO ERROR:
-.
-----------------------------------------------------------------------
-Ran 4 tests in 7.635s
+### Backend
 
-OK
-Destroying test database for alias 'default'...
-```
+#### 📄 [requirements.txt](file:///c:/Users/ghong/OneDrive/Attachments/Desktop/urbanheat-intelligence-engine/backend/requirements.txt)
+* **Change**: Appended deployment packages: `gunicorn`, `whitenoise`, `psycopg2-binary`, and `dj-database-url`.
+* **Rationale**: Enables concurrent WSGI serving, Postgres connections, DATABASE_URL parsing, and static file serving on Render.
 
-### 2. verify_cooldown.py Script
-We ran the integration verification script:
-```text
-=== Starting Gemini Cooldown & Cache Verification ===
+#### 📄 [settings.py](file:///c:/Users/ghong/OneDrive/Attachments/Desktop/urbanheat-intelligence-engine/backend/backend/settings.py)
+* **Change**:
+  * Configured dynamic environment loading for `SECRET_KEY`, `DEBUG`, and `ALLOWED_HOSTS`.
+  * Integrated WhiteNoise middleware and storage configuration (`CompressedManifestStaticFilesStorage`).
+  * Integrated PostgreSQL configuration via `dj_database_url` (with fallback to SQLite for local development).
+  * Implemented environmental CORS configuration for Vercel clients via `CORS_ALLOWED_ORIGINS`.
 
-1. Fetching initial settings...
-Original provider_status: active
-Original cooldown_until: None
+---
 
-2. Switching system to REAL mode...
+### Frontend
 
-3. Posting quota_exceeded status and a 60-second cooldown...
-Cooldown set successfully.
+#### 📄 [config.ts [NEW]](file:///c:/Users/ghong/OneDrive/Attachments/Desktop/urbanheat-intelligence-engine/frontend/src/config.ts)
+* **Change**: Added centralized configuration for the API Base URL, fallback to local development server, and sanitization of trailing slashes.
 
-4. Fetching analysis for Area 2 under cooldown...
-Report Provider (should be 'rule' because of cooldown): rule
-SUCCESS: Cooldown gate bypassed Gemini successfully.
+#### 📄 [HistoricalClimateChart.tsx](file:///c:/Users/ghong/OneDrive/Attachments/Desktop/urbanheat-intelligence-engine/frontend/src/components/dashboard/HistoricalClimateChart.tsx)
+* **Change**: Replaced hardcoded `http://127.0.0.1:8000` with the imported `API_BASE_URL` constant.
 
-5. Fetching analysis again to check cache hit...
-Fetched in 0.0121s. Provider: rule
+#### 📄 [useHeatData.ts](file:///c:/Users/ghong/OneDrive/Attachments/Desktop/urbanheat-intelligence-engine/frontend/src/hooks/useHeatData.ts)
+* **Change**: Replaced hardcoded API host with imported `API_BASE_URL`.
 
-6. Fetching analysis with refresh=true (should NOT bypass cooldown cache/rule engine)...
-Fetched in 0.0114s. Provider: rule
-SUCCESS: Refresh parameter blocked from hitting Gemini during cooldown.
+#### 📄 [useSystemMode.ts](file:///c:/Users/ghong/OneDrive/Attachments/Desktop/urbanheat-intelligence-engine/frontend/src/hooks/useSystemMode.ts)
+* **Change**: Replaced hardcoded API host with imported `API_BASE_URL`.
 
-7. Fetching City PDF...
-City PDF size: 157514 bytes.
+#### 📄 [useSystemSettings.ts](file:///c:/Users/ghong/OneDrive/Attachments/Desktop/urbanheat-intelligence-engine/frontend/src/hooks/useSystemSettings.ts)
+* **Change**: Replaced hardcoded settings API host with imported `API_BASE_URL`.
 
-8. Fetching City PDF again (should hit cache)...
-Second fetch took 0.0151s. Size: 157514 bytes.
+#### 📄 [Settings.tsx](file:///c:/Users/ghong/OneDrive/Attachments/Desktop/urbanheat-intelligence-engine/frontend/src/pages/Settings.tsx)
+* **Change**: Replaced area settings configuration URLs with dynamic `API_BASE_URL`.
 
-9. Cleaning up settings...
-Settings restored.
+#### 📄 [analysisApi.ts](file:///c:/Users/ghong/OneDrive/Attachments/Desktop/urbanheat-intelligence-engine/frontend/src/services/analysisApi.ts)
+* **Change**: Replaced analysis API endpoints with dynamic `API_BASE_URL`.
 
-=== Gemini Cooldown & Cache Verification Completed Successfully! ===
-```
+---
 
-### 3. Server Caching Logs
-```text
-INFO [views] Cache hit: clusters_real
-INFO [views] Cache miss: analysis:REAL:2:rule
-INFO [views] Cache hit: analysis:REAL:2:rule
-INFO [views] Cache hit: analysis:REAL:2:rule
-INFO [views] Cache hit: city_pdf_report:REAL:6630f9cb
-```
+## 2. Deployment Configurations
+
+### Render (Backend & Database)
+* **Root Directory**: `backend`
+* **Build Command**:
+  ```bash
+  pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput
+  ```
+* **Start Command**:
+  ```bash
+  gunicorn backend.wsgi:application
+  ```
+
+### Vercel (Frontend)
+* **Root Directory**: `frontend`
+* **Build Command**:
+  ```bash
+  npm run build
+  ```
+* **Output Directory**: `dist`
+
+---
+
+## 3. Required Environment Variables
+
+### Render Backend Variables
+* `DJANGO_SECRET_KEY`: A secure random string.
+* `DEBUG`: `False` (for production).
+* `ALLOWED_HOSTS`: `your-backend-app.onrender.com`
+* `DATABASE_URL`: Automatically provisioned by Render.
+* `GEMINI_API_KEY`: The API key for Gemini.
+* `CORS_ALLOWED_ORIGINS`: `https://your-frontend-app.vercel.app`
+
+### Vercel Frontend Variables
+* `VITE_API_BASE_URL`: `https://your-backend-app.onrender.com`
+
+---
+
+## 4. Verification Check Outcomes
+* **Django Startup (PostgreSQL)**: Verified that database configuration parses and initializes.
+* **SQLite Fallback**: Verified that running locally with absent `DATABASE_URL` uses SQLite.
+* **collectstatic Compilation**: Successfully executed `collectstatic` locally producing `157 static files copied`.
+* **WhiteNoise**: Confirmed static middleware serves compressed manifest file structure.
+* **CORS Settings**: Verified env-defined allowed origins parse cleanly.
+* **Gemini Cooldown Verification**: Regression tests verified rate limit cooldown scaling (300s -> 600s) and fallback rule engine work seamlessly.

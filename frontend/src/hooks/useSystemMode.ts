@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { API_BASE_URL } from "../config";
 
 export type SystemMode = "REAL" | "SIMULATION";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = `${API_BASE_URL}/api`;
 
 type SystemModeState = {
   mode: SystemMode;

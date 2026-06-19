@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { API_BASE_URL } from "../config";
 
 export type SystemSettingsData = {
   analysis_mode: "rule_engine" | "ai_enhanced";
@@ -23,7 +24,7 @@ export type SystemSettingsData = {
   };
 };
 
-const API_BASE = "http://127.0.0.1:8000/api/settings/";
+const API_BASE = `${API_BASE_URL}/api/settings/`;
 
 type SystemSettingsState = {
   data: SystemSettingsData | null;
