@@ -6,6 +6,7 @@ const DATA_ENDPOINT = `${API_BASE}/data/`;
 const MAX_HISTORY_POINTS = 12;
 
 export type Zone = {
+  id: number;
   name: string;
   temperature: number;
   humidity: number;

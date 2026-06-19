@@ -16,6 +16,7 @@ function App() {
           <Route path="/" element={<Index />} />
           <Route path="/map" element={<MapView />} />
           <Route path="/analytics" element={<Analytics />} />
+
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </MainLayout>

@@ -11,6 +11,7 @@ import { TemperatureChart } from "../components/dashboard/TemperatureChart";
 import { HistoricalClimateChart } from "../components/dashboard/HistoricalClimateChart";
 import { ZoneTable } from "../components/dashboard/ZoneTable";
 import { ClusterChart } from "../components/dashboard/ClusterChart";
+import { AreaAnalysisModal } from "../components/analysis/AreaAnalysisModal";
 import { loadSettings } from "../hooks/useSettings";
 import { useHeatData } from "../hooks/useHeatData";
 
@@ -29,6 +30,8 @@ const Index = () => {
   const [zones, setZones] = useState<any[]>([]);
   const [current, setCurrent] = useState<Stats>(EMPTY);
   const [prev, setPrev] = useState<Stats>(EMPTY);
+  const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null);
+  const [selectedAreaName, setSelectedAreaName] = useState<string | null>(null);
   const lastRef = useRef<Stats | null>(null);
 
   useEffect(() => {
@@ -55,6 +58,16 @@ const Index = () => {
 
   const pct = (curr: number, p: number) =>
     p ? Number((((curr - p) / p) * 100).toFixed(1)) : 0;
+
+  const handleAreaClick = (id: number, name: string) => {
+    setSelectedAreaId(id);
+    setSelectedAreaName(name);
+  };
+
+  const closeAreaModal = () => {
+    setSelectedAreaId(null);
+    setSelectedAreaName(null);
+  };
 
   return (
     <div className="flex flex-col min-h-screen w-full bg-[#0b0f19] text-gray-100">
@@ -129,11 +142,11 @@ const Index = () => {
           />
         </div>
 
-        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-[#0f172a] border border-[#1f2937] rounded-xl p-5 shadow-lg">
             <TemperatureChart />
           </div>
+
           <div className="bg-[#0f172a] border border-[#1f2937] rounded-xl p-5 shadow-lg">
             <HistoricalClimateChart />
           </div>
@@ -142,7 +155,7 @@ const Index = () => {
         {/* HeatGrid + Cluster */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-[#0f172a] border border-[#1f2937] rounded-xl p-5 shadow-lg">
-            <HeatGrid />
+            <HeatGrid onAreaClick={handleAreaClick} />
           </div>
           <div className="bg-[#0f172a] border border-[#1f2937] rounded-xl p-5 shadow-lg">
             <ClusterChart />
@@ -151,8 +164,15 @@ const Index = () => {
 
         {/* Table */}
         <div className="bg-[#0f172a] border border-[#1f2937] rounded-xl p-5 shadow-lg">
-          <ZoneTable />
+          <ZoneTable onAreaClick={handleAreaClick} />
         </div>
+
+        <AreaAnalysisModal
+          isOpen={selectedAreaId !== null}
+          areaId={selectedAreaId}
+          areaName={selectedAreaName}
+          onClose={closeAreaModal}
+        />
 
         {/* Footer */}
         <motion.div

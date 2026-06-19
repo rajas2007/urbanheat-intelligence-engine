@@ -1,0 +1,14 @@
+django
+djangorestframework
+django-cors-headers
+anthropic
+requests
+google-genai
+python-dotenv
+
+# ML requirements for K-Means clustering
+numpy
+scikit-learn
+
+# Required for strict JSON schema validation in the Gemini LLM analysis engine
+jsonschema

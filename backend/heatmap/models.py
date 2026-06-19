@@ -84,3 +84,34 @@ class HistoricalMonthlyAverage(models.Model):
     def __str__(self):
         return f"{self.year}-{self.month:02d}: {self.avg_temperature}°C"
 
+
+class SystemSettings(models.Model):
+    # AI Configuration
+    analysis_mode = models.CharField(max_length=50, default="ai_enhanced")
+    provider = models.CharField(max_length=50, default="gemini")
+    model_name = models.CharField(max_length=50, default="gemini-2.5-flash")
+    last_successful_analysis = models.DateTimeField(null=True, blank=True)
+    provider_status = models.CharField(max_length=50, default="active")
+    cooldown_until = models.DateTimeField(null=True, blank=True)
+    consecutive_failures = models.IntegerField(default=0)
+
+    # PDF Preferences
+    pdf_report_type = models.CharField(max_length=50, default="full")
+    include_executive_summary = models.BooleanField(default=True)
+    include_rankings = models.BooleanField(default=True)
+    include_area_details = models.BooleanField(default=True)
+    include_recommendations = models.BooleanField(default=True)
+    include_appendix = models.BooleanField(default=True)
+
+    # Meta
+    last_pdf_generated = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def get_settings(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return f"System Settings ({self.analysis_mode})"
+

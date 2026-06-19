@@ -1,0 +1,10 @@
+Django>=4.0
+djangorestframework
+django-cors-headers
+anthropic
+google-genai
+requests
+jsonschema
+numpy
+scikit-learn
+reportlab

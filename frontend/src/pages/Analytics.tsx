@@ -5,6 +5,10 @@ import {
   ShieldAlert, ShieldCheck, ShieldQuestion,
 } from "lucide-react";
 import { useHeatData } from "../hooks/useHeatData";
+import { AreaAnalysisModal } from "../components/analysis/AreaAnalysisModal";
+import { downloadCityPdf } from "../services/analysisApi";
+import { useSystemMode } from "../hooks/useSystemMode";
+import { useSystemSettings } from "../hooks/useSystemSettings";
 
 type Zone = {
   name: string;
@@ -271,7 +275,48 @@ const Chatbot = ({ zones }: { zones: Zone[] }) => {
 // ── Main Page ─────────────────────────────────────────────────
 const Analytics = () => {
   const { zones, lastFetchedAt } = useHeatData();
+  const { mode } = useSystemMode();
+  const { data: systemSettings, refresh: refreshSettings } = useSystemSettings();
+  const [retryIn, setRetryIn] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (systemSettings?.provider_status === "quota_exceeded" && systemSettings?.cooldown_until) {
+      const targetTime = new Date(systemSettings.cooldown_until).getTime();
+      
+      const calculateRemaining = () => {
+        const remaining = Math.max(0, Math.ceil((targetTime - Date.now()) / 1000));
+        setRetryIn((prev) => {
+          if (prev !== null && prev > 0 && remaining <= 0) {
+            refreshSettings();
+          }
+          return remaining;
+        });
+        return remaining;
+      };
+
+      const initialRemaining = calculateRemaining();
+      if (initialRemaining <= 0) {
+        setRetryIn(0);
+        return;
+      }
+
+      const interval = setInterval(() => {
+        const remaining = calculateRemaining();
+        if (remaining <= 0) {
+          clearInterval(interval);
+        }
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } else {
+      setRetryIn(null);
+    }
+  }, [systemSettings?.provider_status, systemSettings?.cooldown_until, refreshSettings]);
+
   const [lastUpdated, setLastUpdated] = useState("");
+  const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null);
+  const [selectedAreaName, setSelectedAreaName] = useState<string | null>(null);
+  const [isGeneratingCity, setIsGeneratingCity] = useState(false);
 
   useEffect(() => {
     if (!zones.length) return;
@@ -285,6 +330,16 @@ const Analytics = () => {
     ? zones.reduce((s, z) => s + z.temperature, 0) / zones.length
     : 0;
 
+  const handleAreaClick = (id: number, name: string) => {
+    setSelectedAreaId(id);
+    setSelectedAreaName(name);
+  };
+
+  const closeAnalysisModal = () => {
+    setSelectedAreaId(null);
+    setSelectedAreaName(null);
+  };
+
   return (
     <div className="min-h-screen w-full bg-[#0b0f19] text-gray-100 px-6 py-6 space-y-6">
 
@@ -296,21 +351,40 @@ const Analytics = () => {
             PUNE, MAHARASHTRA • {lastUpdated ? `Updated ${lastUpdated}` : "Connecting..."}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs">
-          <Wind className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-gray-400">{zones.length} zones monitored</span>
+        <div className="flex flex-col items-end gap-3">
+          <div className="flex items-center gap-2 text-xs">
+            <Wind className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-gray-400">{zones.length} zones monitored</span>
+          </div>
+          <button
+            onClick={async () => {
+              setIsGeneratingCity(true);
+              try {
+                await downloadCityPdf();
+              } catch (err) {
+                console.error(err);
+                alert("Failed to generate city report.");
+              } finally {
+                setIsGeneratingCity(false);
+              }
+            }}
+            disabled={isGeneratingCity}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm font-semibold"
+          >
+            {isGeneratingCity ? "Generating City Report..." : "📚 Generate City Intelligence Report"}
+          </button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {[
           { label: "Critical Zones", value: critical.length,          color: "text-red-400",    bg: "bg-red-500/10",    border: "border-red-500/20",    icon: ShieldAlert    },
           { label: "Moderate Zones", value: moderate.length,          color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/20", icon: ShieldQuestion },
           { label: "Safe Zones",     value: safe.length,              color: "text-cyan-400",   bg: "bg-cyan-500/10",   border: "border-cyan-500/20",   icon: ShieldCheck    },
           { label: "Avg Temp",       value: `${avgTemp.toFixed(1)}°C`, color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20", icon: Thermometer    },
         ].map(({ label, value, color, bg, border, icon: Icon }) => (
-          <div key={label} className={`${bg} ${border} border rounded-xl p-4`}>
+          <div key={label} className={`${bg} ${border} border rounded-xl p-4 flex flex-col justify-center`}>
             <div className="flex items-center gap-2 text-gray-400 text-xs mb-2">
               <Icon className="w-4 h-4" />
               {label}
@@ -318,6 +392,70 @@ const Analytics = () => {
             <div className={`text-3xl font-bold ${color}`}>{value}</div>
           </div>
         ))}
+
+        {/* System Status Card */}
+        <div className="bg-[#0f172a]/85 border border-[#1f2937] rounded-xl p-4 flex flex-col justify-between shadow-lg">
+          <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+            <span className="flex items-center gap-1.5 font-semibold text-gray-300">
+              <Bot className="w-4 h-4 text-orange-400" />
+              System Status
+            </span>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+          </div>
+
+          <div className="space-y-1 text-xs">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Mode:</span>
+              <span className={`font-semibold ${mode === "SIMULATION" ? "text-amber-400 animate-pulse" : "text-emerald-400"}`}>
+                {mode === "SIMULATION" ? "Simulation" : "Real-Time"}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">ML Status:</span>
+              <span className="text-emerald-400 font-semibold">Active</span>
+            </div>
+            {systemSettings?.provider_status === "quota_exceeded" && retryIn !== null && retryIn > 0 ? (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">AI Status:</span>
+                  <span className="text-red-400 font-semibold animate-pulse">Quota Limited</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Retry In:</span>
+                  <span className="text-red-400 font-mono font-semibold">{retryIn}s</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Current Provider:</span>
+                  <span className="text-gray-300 font-semibold">Rule Engine</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">AI Status:</span>
+                  <span className={`font-semibold ${mode === "SIMULATION" ? "text-amber-500/80" : "text-emerald-400"}`}>
+                    {mode === "SIMULATION" ? "Paused" : "Active"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Data Source:</span>
+                  <span className="text-gray-300 font-medium">
+                    {mode === "SIMULATION" ? "Simulation Engine" : "Real Sensors"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Report Source:</span>
+                  <span className="text-gray-300 font-medium font-mono text-[10px]">
+                    {mode === "SIMULATION" ? "Rule Engine" : "Gemini AI"}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Alert Sections */}
@@ -335,7 +473,11 @@ const Analytics = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {zlist.map((zone) => (
-                  <div key={zone.name} className={`${cfg.bg} ${cfg.border} border rounded-xl p-4 space-y-3`}>
+                  <button
+                    key={zone.name}
+                    onClick={() => handleAreaClick(zone.id!, zone.name)}
+                    className={`w-full text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-${cfg.color.split('-')[1]}-500/10 ${cfg.bg} ${cfg.border} border rounded-xl p-4 space-y-3`}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="font-semibold text-white text-base">{zone.name}</div>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
@@ -358,7 +500,7 @@ const Analytics = () => {
                       <AlertTriangle className="w-3 h-3 inline mr-1 text-yellow-500" />
                       {getReco(zone)}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -368,6 +510,14 @@ const Analytics = () => {
 
       {/* Floating chatbot */}
       <Chatbot zones={zones} />
+
+      {/* Area Analysis Modal */}
+      <AreaAnalysisModal
+        isOpen={selectedAreaId !== null}
+        onClose={closeAnalysisModal}
+        areaId={selectedAreaId}
+        areaName={selectedAreaName}
+      />
     </div>
   );
 };

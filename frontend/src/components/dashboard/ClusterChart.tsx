@@ -14,6 +14,8 @@ type Point = {
   name: string;
   temperature: number;
   density: number;
+  humidity: number;
+  vegetation: number;
   cluster: number;
 };
 
@@ -24,6 +26,132 @@ const getColor = (cluster: number) => {
   return "#06b6d4"; // 🔵 Safe
 };
 
+const getClusterLabel = (cluster: number) => {
+  if (cluster === 2) return "Critical";
+  if (cluster === 1) return "Moderate";
+  return "Safe";
+};
+
+const tooltipRow = (
+  label: string,
+  value: string,
+  color: string = "#f9fafb"
+) => (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "16px",
+      padding: "3px 0",
+    }}
+  >
+    <span
+      style={{
+        color: "#9ca3af",
+        fontSize: "11px",
+        fontWeight: 500,
+      }}
+    >
+      {label}
+    </span>
+    <span
+      style={{
+        color,
+        fontSize: "12px",
+        fontWeight: 600,
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
+      {value}
+    </span>
+  </div>
+);
+
+const ClusterTooltip = ({ active, payload }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const point: Point = payload[0]?.payload;
+  if (!point) return null;
+
+  const clusterColor = getColor(point.cluster);
+  const clusterLabel = getClusterLabel(point.cluster);
+
+  return (
+    <div
+      style={{
+        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        borderRadius: "12px",
+        padding: "14px 16px",
+        boxShadow:
+          "0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05)",
+        minWidth: "180px",
+        maxWidth: "240px",
+      }}
+    >
+      {/* Area Name */}
+      <p
+        style={{
+          color: "#f9fafb",
+          fontSize: "14px",
+          fontWeight: 600,
+          margin: "0 0 8px 0",
+        }}
+      >
+        {point.name}
+      </p>
+
+      {/* Cluster Badge */}
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          padding: "3px 10px",
+          borderRadius: "9999px",
+          backgroundColor: `${clusterColor}15`,
+          border: `1px solid ${clusterColor}40`,
+          marginBottom: "10px",
+        }}
+      >
+        <span
+          style={{
+            width: "6px",
+            height: "6px",
+            borderRadius: "50%",
+            backgroundColor: clusterColor,
+            display: "inline-block",
+          }}
+        />
+        <span
+          style={{
+            color: clusterColor,
+            fontSize: "11px",
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+          }}
+        >
+          Cluster {point.cluster} — {clusterLabel}
+        </span>
+      </div>
+
+      {/* Data Rows */}
+      <div
+        style={{
+          borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+          paddingTop: "8px",
+        }}
+      >
+        {tooltipRow("Temperature", `${point.temperature.toFixed(1)}°C`, "#ef4444")}
+        {tooltipRow("Density", point.density.toFixed(1))}
+        {tooltipRow("Humidity", `${point.humidity.toFixed(1)}%`)}
+        {tooltipRow("Vegetation", point.vegetation.toFixed(3), "#22c55e")}
+      </div>
+    </div>
+  );
+};
+
 export const ClusterChart = () => {
   const { zones, loading } = useHeatData();
 
@@ -32,6 +160,8 @@ export const ClusterChart = () => {
       name: z.name,
       temperature: Number(z.temperature) || 0,
       density: Number(z.density) || 0,
+      humidity: Number(z.humidity) || 0,
+      vegetation: Number(z.vegetation) || 0,
       cluster: Number(z.cluster) || 0,
     })),
     [zones]
@@ -78,11 +208,11 @@ export const ClusterChart = () => {
               />
 
               <Tooltip
-                formatter={(value: any, name: any) => [value, name]}
-                labelFormatter={() => `Area`}
-                contentStyle={{
-                  backgroundColor: "#020617",
-                  border: "1px solid #1f2937",
+                content={<ClusterTooltip />}
+                cursor={{
+                  stroke: "rgba(255, 255, 255, 0.1)",
+                  strokeWidth: 1,
+                  strokeDasharray: "4 4",
                 }}
               />
 

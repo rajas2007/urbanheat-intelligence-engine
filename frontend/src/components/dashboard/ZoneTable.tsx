@@ -1,11 +1,5 @@
 import { useHeatData } from "../../hooks/useHeatData";
 
-type Zone = {
-  name: string;
-  temperature: number;
-  cluster: number;
-};
-
 // 🎯 Convert ML cluster → human-readable risk
 const getRiskLevel = (cluster: number) => {
   if (cluster === 2) return "Critical";
@@ -13,13 +7,8 @@ const getRiskLevel = (cluster: number) => {
   return "Safe";
 };
 
-export const ZoneTable = () => {
+export const ZoneTable = ({ onAreaClick }: { onAreaClick?: (id: number, name: string) => void }) => {
   const { zones, loading } = useHeatData();
-  const formatted = zones.map((z) => ({
-    name: z.name,
-    temperature: Number(z.temperature),
-    cluster: Number(z.cluster),
-  }));
 
   return (
     <>
@@ -29,6 +18,7 @@ export const ZoneTable = () => {
 
        <p className="text-xs text-gray-400 mb-4 text-center">
             {loading ? "Loading..." : `${zones.length} zones analyzed`}
+            {onAreaClick && !loading && " • Click a row for mitigation analysis"}
        </p>
       {loading ? (
         <p className="text-gray-400">Loading...</p>
@@ -49,7 +39,8 @@ export const ZoneTable = () => {
               return (
                 <tr
                   key={z.name}
-                  className="border-b border-[#1f2937] hover:bg-[#1f2937]/40"
+                  onClick={() => onAreaClick?.(z.id!, z.name)}
+                  className={`border-b border-[#1f2937] hover:bg-[#1f2937]/40 ${onAreaClick ? "cursor-pointer" : ""}`}
                 >
                   <td className="p-2">{z.name}</td>
 

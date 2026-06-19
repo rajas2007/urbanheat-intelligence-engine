@@ -1,11 +1,5 @@
-import { useMemo } from "react";
 import { useHeatData } from "../../hooks/useHeatData";
 
-type Zone = {
-  name: string;
-  temperature: number;
-  cluster: number;
-};
 
 // 🎯 cluster color
 const getClusterColor = (cluster: number) => {
@@ -21,17 +15,10 @@ const getClusterLabel = (cluster: number) => {
   return "Safe";
 };
 
-export const HeatGrid = () => {
+export const HeatGrid = ({ onAreaClick }: { onAreaClick?: (id: number, name: string) => void }) => {
   const { zones, loading } = useHeatData();
 
-  const formatted = useMemo(
-    () => zones.map((z) => ({
-      name: z.name || "Unknown",
-      temperature: Number(z.temperature) || 0,
-      cluster: Number(z.cluster) || 0,
-    })),
-    [zones]
-  );
+
 
   return (
     <div>
@@ -43,6 +30,7 @@ export const HeatGrid = () => {
           </h2>
           <p className="text-xs text-gray-400">
             Zones classified by heat risk using clustering
+            {onAreaClick && " • Click a zone for mitigation analysis"}
           </p>
         </div>
 
@@ -60,10 +48,14 @@ export const HeatGrid = () => {
         <div className="grid grid-cols-4 gap-3">
           {zones.map((z) => (
             <div
-              key={z.name} // ✅ FIXED (no index)
+              key={z.name}
+              role={onAreaClick ? "button" : undefined}
+              tabIndex={onAreaClick ? 0 : undefined}
+              onClick={() => onAreaClick?.(z.id!, z.name)}
+              onKeyDown={(e) => e.key === "Enter" && onAreaClick?.(z.id!, z.name)}
               className={`p-4 rounded-xl font-semibold transition-all duration-300 hover:scale-105 ${getClusterColor(
                 z.cluster
-              )}`}
+              )} ${onAreaClick ? "cursor-pointer" : ""}`}
             >
               <div className="text-xs truncate">{z.name}</div>
 

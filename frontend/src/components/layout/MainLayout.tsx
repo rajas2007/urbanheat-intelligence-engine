@@ -4,6 +4,7 @@ import { useHeatData } from "../../hooks/useHeatData";
 import { useSystemMode } from "../../hooks/useSystemMode";
 import { Sidebar } from "./Sidebar";
 import { SimulationConfirmModal } from "./SimulationConfirmModal";
+import { SimulationBanner } from "./SimulationBanner";
 
 type Props = {
   children: React.ReactNode;
@@ -39,8 +40,11 @@ export const MainLayout = ({ children }: Props) => {
         onStopSimulation={stopSimulation}
       />
 
-      <div className="flex-1 transition-all duration-300 overflow-hidden">
-        {children}
+      <div className="flex-1 transition-all duration-300 overflow-hidden flex flex-col">
+        {mode === "SIMULATION" && <SimulationBanner />}
+        <div className="flex-1 overflow-y-auto">
+          {children}
+        </div>
       </div>
 
       <SimulationConfirmModal
